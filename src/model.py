@@ -653,6 +653,10 @@ class FasterRCNN(tf.keras.models.Model):
         self.rcnn_cls_loss_tracker = tf.keras.metrics.Mean(name='rcnn_cls_loss')
         self.rcnn_reg_loss_tracker = tf.keras.metrics.Mean(name='rcnn_reg_loss')
 
+        # total loss tracker
+        self.rcnn_total_loss_tracker = tf.keras.metrics.Mean(name='rcnn_total_loss')
+        self.total_loss_tracker = tf.keras.metrics.Mean(name='rcnn_total_loss')
+
     @property
     def metrics(self):
         # We list our `Metric` objects here so that `reset_states()` can be
@@ -667,6 +671,8 @@ class FasterRCNN(tf.keras.models.Model):
             self.rcnn_cls_acc_tracker,
             self.rcnn_cls_loss_tracker,
             self.rcnn_reg_loss_tracker,
+            self.rcnn_total_loss_tracker,
+            self.total_loss_tracker,
             ]
         return metrics
 
@@ -796,7 +802,6 @@ class FasterRCNN(tf.keras.models.Model):
             rcnn_reg_loss = tf.reduce_sum(rcnn_reg_loss)/tf.cast(self.config.BATCH_SIZE, dtype=tf.float32)
 
             total_loss = rpn_cls_loss + rpn_reg_loss + rcnn_cls_loss + rcnn_reg_loss
-            # total_loss = rpn_cls_loss + rpn_reg_loss*10
 
         # update gradient
         grads = tape.gradient(total_loss, self.trainable_variables)
@@ -815,6 +820,7 @@ class FasterRCNN(tf.keras.models.Model):
             )
         self.rcnn_cls_loss_tracker.update_state(rcnn_cls_loss)
         self.rcnn_reg_loss_tracker.update_state(rcnn_reg_loss)
+        self.total_loss_tracker.update_state(total_loss)
 
         # pack return values
         ret = {
@@ -824,6 +830,7 @@ class FasterRCNN(tf.keras.models.Model):
             "rcnn_cls_acc": self.rcnn_cls_acc_tracker.result(),
             "rcnn_cls_loss": self.rcnn_cls_loss_tracker.result(),
             "rcnn_reg_loss": self.rcnn_reg_loss_tracker.result(),
+            "total_loss": self.total_loss_tracker.result(),
             }
         return ret
 
@@ -909,12 +916,14 @@ class FasterRCNN(tf.keras.models.Model):
             )
         self.rcnn_cls_loss_tracker.update_state(rcnn_cls_loss)
         self.rcnn_reg_loss_tracker.update_state(rcnn_reg_loss)
+        self.rcnn_total_loss_tracker.update_state(rcnn_cls_loss + rcnn_reg_loss)
 
         # pack return values
         ret = {
             "rcnn_cls_acc": self.rcnn_cls_acc_tracker.result(),
             "rcnn_cls_loss": self.rcnn_cls_loss_tracker.result(),
             "rcnn_reg_loss": self.rcnn_reg_loss_tracker.result(),
+            "rcnn_total_loss": self.rcnn_total_loss_tracker.result(),
             }
         return ret
 

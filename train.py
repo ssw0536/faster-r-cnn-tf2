@@ -64,19 +64,18 @@ if __name__ == '__main__':
     save_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=model_dir,
         save_weights_only=False,
-        monitor="val_rcnn_cls_acc",
-        mode="max",
+        monitor="val_rcnn_total_loss",
+        mode="min",
         save_best_only=True)
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                           histogram_freq=0,
                                                           write_graph=True,
                                                           write_images=False)
 
-    # train model
+    # train modelW
     model.fit(
         train_dataset,
         epochs=config.EPOCH,
-        # callbacks=[tensorboard_callback],
         callbacks=[save_callback, tensorboard_callback],
         validation_data=test_dataset,
         validation_freq=3,
