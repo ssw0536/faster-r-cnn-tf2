@@ -655,7 +655,7 @@ class FasterRCNN(tf.keras.models.Model):
 
         # total loss tracker
         self.rcnn_total_loss_tracker = tf.keras.metrics.Mean(name='rcnn_total_loss')
-        self.total_loss_tracker = tf.keras.metrics.Mean(name='rcnn_total_loss')
+        self.total_loss_tracker = tf.keras.metrics.Mean(name='total_loss')
 
     @property
     def metrics(self):
