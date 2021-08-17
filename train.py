@@ -42,24 +42,23 @@ if __name__ == '__main__':
                             config.INPUT_SHAPE,
                             batch_size=config.BATCH_SIZE,
                             max_gt_instance=config.MAX_GT_INSTANCE,
-                            debug=True)
+                            debug=False)
 
-    test_dataset = VOCData(train_data_dir,
-    # test_dataset = VOCData(test_data_dir,
+    test_dataset = VOCData(test_data_dir,
                            config.INPUT_SHAPE,
                            batch_size=config.BATCH_SIZE,
                            max_gt_instance=config.MAX_GT_INSTANCE,
-                           debug=True)
+                           debug=False)
 
     # build model
     inputs, outputs = build_faster_rcnn_graph(config)
     model = FasterRCNN(inputs, outputs, config)
 
     # compile model
-    # model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=config.LR))
-    model.compile(optimizer=tf.keras.optimizers.SGD(
-        learning_rate=config.LR,
-        momentum=0.9))
+    # model.compile(optimizer=tf.keras.optimizers.SGD(
+    #     learning_rate=config.LR,
+    #     momentum=0.9))
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=config.LR))
 
     # callbacks
     save_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -77,8 +76,9 @@ if __name__ == '__main__':
     model.fit(
         train_dataset,
         epochs=config.EPOCH,
-        callbacks=[tensorboard_callback],
-        # callbacks=[save_callback, tensorboard_callback],
+        # callbacks=[tensorboard_callback],
+        callbacks=[save_callback, tensorboard_callback],
         validation_data=test_dataset,
+        validation_freq=3,
         max_queue_size=100,
         )

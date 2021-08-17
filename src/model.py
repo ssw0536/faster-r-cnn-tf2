@@ -912,9 +912,6 @@ class FasterRCNN(tf.keras.models.Model):
 
         # pack return values
         ret = {
-            # "rpn_cls_acc": self.rpn_cls_acc_tracker.result(),
-            # "rpn_cls_loss": self.rpn_cls_loss_tracker.result(),
-            # "rpn_reg_loss": self.rcnn_cls_acc_tracker.result(),
             "rcnn_cls_acc": self.rcnn_cls_acc_tracker.result(),
             "rcnn_cls_loss": self.rcnn_cls_loss_tracker.result(),
             "rcnn_reg_loss": self.rcnn_reg_loss_tracker.result(),

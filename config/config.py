@@ -1,7 +1,7 @@
 class Config(object):
     # Training Hyperparameters
-    LR = 1e-4
-    BATCH_SIZE = 1
+    LR = 1e-3
+    BATCH_SIZE = 8
     EPOCH = 10000
 
     # General

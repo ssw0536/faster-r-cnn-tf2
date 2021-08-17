@@ -214,7 +214,7 @@ if __name__ == '__main__':
     #         plt.imshow(img_vis)
     #         plt.show()
 
-    # get max gt instance 
+    # get max gt instance
     total_num_instance = list()
     i = 0
     for _, (_, _, num_instacne_batch) in vocdata:

@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # model.compile()
     model = tf.keras.models.load_model(model_dir)
     model.summary()
-    
+
     # test
     for img_batch, (cls_batch, bbox_batch, num_instacne_batch) in test_dataset:
         # visualize the dataset
