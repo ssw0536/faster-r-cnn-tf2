@@ -49,9 +49,11 @@ def box_iou(box_i, box_t):
     return overlaps
 
 
+# @tf.function(input_signature=(
+#     tf.TensorSpec(shape=(None, 4), dtype=tf.float32),))
 @tf.function
 def yxyx_to_xyctrwh(yyxx):
-    y_min, x_min, y_max, x_max = tf.unstack(yyxx, axis=-1)
+    y_min, x_min, y_max, x_max = tf.unstack(yyxx, 4, axis=-1)
     x_ctr = (x_min + x_max)/tf.constant(2, dtype=tf.float32)
     y_ctr = (y_min + y_max)/tf.constant(2, dtype=tf.float32)
     w = x_max - x_min
@@ -60,9 +62,11 @@ def yxyx_to_xyctrwh(yyxx):
     return xyctrwh
 
 
+# @tf.function(input_signature=(
+#     tf.TensorSpec(shape=(None, 4), dtype=tf.float32),))
 @tf.function
 def xyctrwh_to_yxyx(xyctrwh):
-    x_ctr, y_ctr, w, h = tf.unstack(xyctrwh, axis=-1)
+    x_ctr, y_ctr, w, h = tf.unstack(xyctrwh, 4, axis=-1)
     y_min = y_ctr - h/tf.constant(2, dtype=tf.float32)
     x_min = x_ctr - w/tf.constant(2, dtype=tf.float32)
     y_max = y_ctr + h/tf.constant(2, dtype=tf.float32)
@@ -269,9 +273,9 @@ def build_faster_rcnn_graph(config):
     roi_box, roi_box_indicies, valid_num = RegionProposalLayer(
         iou_threshold=config.RPN_NMS_IOU,
         max_output_size=config.RPN_NMS_NUM,
-        box_boundary=[0, 0, config.INPUT_SHAPE[0], config.INPUT_SHAPE[1]],
+        box_boundary=[0, 0, config.INPUT_SHAPE[0]-1, config.INPUT_SHAPE[1]-1],
         anchors=anchors,
-        name="region_p"
+        name="region_proposal_layer"
         )((rpn_cls, rpn_reg))
 
     norm_roi_box = tf.divide(
@@ -414,18 +418,26 @@ def get_rpn_target(
     neg_indices = tf.random.shuffle(neg_indices)[:neg_num]
     train_indices = tf.concat([pos_indices, neg_indices], axis=0)
 
-    # cls target and weight
+    # cls targets
     cls_target = tf.pad(
         tf.fill([pos_num], 1),
         [[0, neg_num]]
         )
 
-    # reg target and weight
+    # gather pos target boxes and anchors
     pos_target_gt_boxes = tf.gather(gt_box, tf.gather(argmax_overlaps, pos_indices))
     pos_target_anchors = tf.gather(anchor, pos_indices)
+
+    # yyxx to xyctrwh
+    pos_target_gt_boxes = yxyx_to_xyctrwh(pos_target_gt_boxes)
+    pos_target_anchors = yxyx_to_xyctrwh(pos_target_anchors)
+
+    # paramterize boxes
     pos_target_reg_values = parameterize_box(
         pos_target_gt_boxes,
         pos_target_anchors)
+
+    # reg target: zero pad negative targets
     reg_target = tf.pad(
         pos_target_reg_values,
         tf.convert_to_tensor([[0, neg_num], [0, 0]])
@@ -482,7 +494,10 @@ def get_rcnn_target(
         dtype=tf.int32)
     pos_indices = tf.random.shuffle(pos_indices)[:pos_num]
     sampled_pos_num = tf.shape(pos_indices)[0]
-    neg_num = total_sample_num - sampled_pos_num
+    # neg_num = total_sample_num - sampled_pos_num
+    neg_num = tf.cast(
+        tf.math.ceil(tf.cast(sampled_pos_num, dtype=tf.float32)*(1-pos_sample_ratio)/pos_sample_ratio),
+        dtype=tf.int32) # TODO: unvaild yet...
     neg_indices = tf.random.shuffle(neg_indices)[:neg_num]
     train_indices = tf.concat([pos_indices, neg_indices], axis=0)
 
@@ -492,16 +507,21 @@ def get_rcnn_target(
 
     cls_target = tf.pad(
         pos_target_cls_id_values,
-        tf.convert_to_tensor([[0, neg_num]]),
+        tf.convert_to_tensor([[0, total_sample_num-sampled_pos_num]]),
         "CONSTANT")
 
     # get training reg targets
     pos_target_rois = tf.gather(rois, pos_indices)
     pos_target_gt_box = tf.gather(gt_box, pos_target_gt_box_indices)
+
+    # yxyx to xyctrwh
+    pos_target_rois = yxyx_to_xyctrwh(pos_target_rois)
+    pos_target_gt_box = yxyx_to_xyctrwh(pos_target_gt_box)
+
     pos_target_reg_values = parameterize_box(pos_target_gt_box, pos_target_rois)
     reg_target = tf.pad(
         pos_target_reg_values,
-        tf.convert_to_tensor([[0, neg_num], [0, 0]])
+        tf.convert_to_tensor([[0, total_sample_num-sampled_pos_num], [0, 0]])
         )
 
     # the number of training indices can be less then `total_sample_num`
@@ -585,7 +605,9 @@ class RegionProposalLayer(tf.keras.layers.Layer):
         self.iou_threshold = iou_threshold
         self.max_output_size = max_output_size
         self.box_boundary = box_boundary  # y_min, x_min, y_max, x_max
-        self.anchors = anchors
+
+        # change coordinate of anchors
+        self.anchors = yxyx_to_xyctrwh(anchors)
 
     def call(self, inputs):
         # BxAx4, BxAx2, Ax4
@@ -595,6 +617,9 @@ class RegionProposalLayer(tf.keras.layers.Layer):
         rpn_boxes = tf.map_fn(
             fn=lambda x: unparameterize_box(x, self.anchors),
             elems=rpn_deltas)
+
+        # xyctr to yyxx
+        rpn_boxes = xyctrwh_to_yxyx(rpn_boxes)
 
         # clip with image boundary
         y_min, x_min, y_max, x_max = self.box_boundary
@@ -758,6 +783,7 @@ class FasterRCNN(tf.keras.models.Model):
             rcnn_train_indices = rcnn_targets[2]
             rcnn_valid_num = rcnn_targets[3]
             rcnn_pos_num = rcnn_targets[4]
+            tf.print(tf.reduce_mean(rcnn_pos_num))
 
             ########
             # LOSS #
@@ -801,7 +827,7 @@ class FasterRCNN(tf.keras.models.Model):
                 )
             rcnn_reg_loss = tf.reduce_sum(rcnn_reg_loss)/tf.cast(self.config.BATCH_SIZE, dtype=tf.float32)
 
-            total_loss = rpn_cls_loss + rpn_reg_loss + rcnn_cls_loss + rcnn_reg_loss
+            total_loss = rpn_cls_loss + rpn_reg_loss*10 + rcnn_cls_loss + rcnn_reg_loss*10
 
         # update gradient
         grads = tape.gradient(total_loss, self.trainable_variables)

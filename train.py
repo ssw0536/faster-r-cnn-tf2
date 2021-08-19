@@ -1,7 +1,6 @@
 import os
 import yaml
 import datetime
-import multiprocessing
 
 import tensorflow as tf
 
@@ -55,10 +54,10 @@ if __name__ == '__main__':
     model = FasterRCNN(inputs, outputs, config)
 
     # compile model
-    # model.compile(optimizer=tf.keras.optimizers.SGD(
-    #     learning_rate=config.LR,
-    #     momentum=0.9))
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=config.LR))
+    model.compile(optimizer=tf.keras.optimizers.SGD(
+        learning_rate=config.LR,
+        decay=config.DECAY,
+        momentum=0.9))
 
     # callbacks
     save_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -78,6 +77,6 @@ if __name__ == '__main__':
         epochs=config.EPOCH,
         callbacks=[save_callback, tensorboard_callback],
         validation_data=test_dataset,
-        validation_freq=3,
+        validation_freq=1,
         max_queue_size=100,
         )

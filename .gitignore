@@ -2,6 +2,9 @@
 model/*
 dataset/*
 !dataset/download_VOC2007.sh
+train_debug.py
+test_debug.py
+debug.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

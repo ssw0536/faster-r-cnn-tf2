@@ -1,8 +1,13 @@
 class Config(object):
     # Training Hyperparameters
-    LR = 1e-5
+    LR = 1e-4
+    DECAY = 5e-4
     BATCH_SIZE = 8
     EPOCH = 10000
+
+    # Post Process
+    DETECTION_NMS_IOU = 0.5
+    DETECTION_NMS_MAX_NUM = 100
 
     # General
     INPUT_SHAPE = [600, 1000, 3]
@@ -34,3 +39,14 @@ class Config(object):
     RCNN_TOTAL_SAMPLE_NUM = 64
     RCNN_POS_SAMPLE_RATIO = 0.25
     RCNN_LAMDA = 1.0
+
+    def __init__(self):
+        # save configs
+        config_vars = vars(Config)
+        config_dict = {}
+        for attr in list(config_vars.keys()):
+            if not attr.startswith("__"):
+                config_dict[attr] = config_vars[attr]
+
+        print("Configuration is loaded: ")
+        print(config_dict)

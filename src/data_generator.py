@@ -5,7 +5,6 @@ import xml.etree.ElementTree as Et
 import cv2
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import seaborn as sns
 
 
@@ -38,6 +37,7 @@ class VOCData(tf.keras.utils.Sequence):
 
     def __init__(self, root_dir, inp_img_shape=[600, 1000, 3], batch_size=2, max_gt_instance=50, debug=False):
         # set img and xml directory
+        self.root_dir = root_dir
         self.img_path = os.path.join(root_dir, self.IMAGE_DIR)
         self.xml_path = os.path.join(root_dir, self.LABEL_DIR)
 
@@ -46,6 +46,7 @@ class VOCData(tf.keras.utils.Sequence):
         self.data_list.sort()
 
         # DEBUG
+        self.debug = debug
         if debug is True:
             self.data_list = self.data_list[0:batch_size]
 
@@ -53,6 +54,9 @@ class VOCData(tf.keras.utils.Sequence):
         self.inp_img_shape = inp_img_shape
         self.batch_size = int(batch_size)
         self.max_gt_instance = int(max_gt_instance)
+
+        # show info
+        self._print_info()
 
     def __getitem__(self, idx):
         data_indices = self.data_list[idx * self.batch_size:(idx + 1) * self.batch_size]
@@ -154,13 +158,14 @@ class VOCData(tf.keras.utils.Sequence):
         color_palette = np.array(sns.color_palette("Dark2", 20))
         color_palette = (color_palette*255).astype("uint8")
 
-        # make bboxlist `integer`
+        # make bboxlist `integer`W
         bbox_list = bbox_list.astype('int32')
 
         # un-normalize the image
         img_vis = img.copy()
-        img_vis *= 255
-        img_vis = img_vis.astype('uint8')
+        if img_vis.dtype != np.uint8:
+            img_vis *= 255
+            img_vis = img_vis.astype('uint8')
 
         # draw the bounding box and put label text on the corresponding bbox
         for i in range(len(cls_list)):
@@ -193,6 +198,13 @@ class VOCData(tf.keras.utils.Sequence):
         img_vis = cv2.cvtColor(img_vis, cv2.COLOR_BGR2RGB)
         return img_vis
 
+    def _print_info(self):
+        print("Load from: {}".format(self.root_dir))
+        print("DEBUD MODE: {}".format(self.debug))
+        print("Batch size: {}".format(self.batch_size))
+        print("Images: {}".format(len(self.data_list)))
+        print("Classes: {}\n".format(self.LABEL_LIST))
+
 
 if __name__ == '__main__':
     BATCH_SIZE = 2
@@ -200,19 +212,6 @@ if __name__ == '__main__':
     # create voc explore dataset
     dataset_dir = 'dataset/VOC2007/trainval/VOCdevkit/VOC2007'
     vocdata = VOCData(dataset_dir, batch_size=BATCH_SIZE)
-
-
-    # visualize labeled image
-    # for img_batch, (cls_batch, bbox_batch, num_instacne_batch) in vocdata:
-    #     for idx in BATCH_SIZE:
-    #         # visualize the dataset
-    #         plt.figure()
-    #         img_vis = vocdata.draw_label_img(
-    #             img_batch[0],
-    #             cls_batch[0][:num_instacne_batch[0]],
-    #             bbox_batch[0][:num_instacne_batch[0]])
-    #         plt.imshow(img_vis)
-    #         plt.show()
 
     # get max gt instance
     total_num_instance = list()
