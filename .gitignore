@@ -1,5 +1,6 @@
 # CUSTOM
 model/*
+!model/download_model.sh
 dataset/*
 !dataset/download_VOC2007.sh
 train_debug.py

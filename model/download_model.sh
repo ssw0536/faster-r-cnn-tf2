@@ -1,0 +1,2 @@
+wget -O model/20210819-170020-debug.zip https://o365skku-my.sharepoint.com/:u:/g/personal/ssw0536_o365_skku_edu/ER99D-wzDrhCn7qZNM_XchABTJLSBck6csbKkhngxmdRSQ\?e\=DqmrPT\&download\=1
+unzip model/20210819-170020-debug.zip -d model/
